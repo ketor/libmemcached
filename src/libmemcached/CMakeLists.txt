@@ -178,3 +178,38 @@ add_dependencies(libmemcached libmemcachedinternal)
 target_sources(libmemcachedinternal PRIVATE
         ${libmemcached_sources}
         ${libmemcached_includes})
+
+# static
+add_library(libmemcachedstatic STATIC)
+add_library(memcachedstatic ALIAS libmemcachedstatic)
+set_target_properties(libmemcachedstatic PROPERTIES CXX_STANDARD ${CXX_STANDARD} LIBRARY_OUTPUT_NAME memcachedstatic)
+target_compile_definitions(libmemcachedstatic PRIVATE -DBUILDING_libmemcachedstatic)
+target_link_libraries(libmemcachedstatic PUBLIC libhashkit Threads::Threads ${CMAKE_DL_LIBS})
+target_link_libraries(libmemcachedstatic PRIVATE p9y)
+if(MSVC OR MINGW)
+    target_link_libraries(libmemcached PUBLIC wsock32 ws2_32)
+endif()
+if(HAVE_LIBSASL)
+    target_link_libraries(libmemcachedstatic PUBLIC ${LIBSASL})
+endif()
+if(HAVE_BACKTRACE)
+    target_link_libraries(libmemcachedstatic PUBLIC ${BACKTRACE})
+endif()
+target_include_directories(libmemcachedstatic PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/src
+        ${CMAKE_BINARY_DIR})
+target_include_directories(libmemcachedstatic PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+        $<INSTALL_INTERFACE:include>)
+
+enable_dtrace_for(libmemcachedstatic libmemcached_probes.d dtrace_probes.h)
+
+# let libmemcached depend on libmemcachedstatic to ensure that they do not
+# compete for the same generated dependencies
+add_dependencies(libmemcached libmemcachedstatic)
+
+target_sources(libmemcachedstatic PRIVATE
+        ${libmemcached_sources}
+        ${libmemcached_includes})

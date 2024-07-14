@@ -78,3 +78,47 @@ install_public_headers(
 target_sources(libhashkit PRIVATE
         ${libhashkit_sources}
         ${libhashkit_includes})
+
+# static
+add_library(libhashkitstatic STATIC)
+add_library(hashkitstatic ALIAS libhashkitstatic)
+set_target_properties(libhashkit PROPERTIES
+        CXX_STANDARD ${CXX_STANDARD}
+        LIBRARY_OUTPUT_NAME hashkitstatic
+        LIBRARY_OUTPUT_NAME_DEBUG hashkitstatic-dbg
+        SOVERSION ${LIBHASHKIT_SO_SOVERSION}
+        VERSION ${LIBHASHKIT_SO_VERSION}
+        LIBRARY_OUTPUT_NAME hashkitstatic)
+target_include_directories(libhashkitstatic PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}/src
+        ${CMAKE_BINARY_DIR})
+target_include_directories(libhashkitstatic PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+        $<INSTALL_INTERFACE:include>)
+
+if(ENABLE_OPENSSL_CRYPTO)
+        find_package(OpenSSL)
+        if(OPENSSL_FOUND)
+                if(OPENSSL_CRYPTO_LIBRARY)
+                        target_compile_definitions(libhashkitstatic PRIVATE HAVE_OPENSSL_CRYPTO)
+                        target_link_libraries(libhashkitstatic PUBLIC OpenSSL::Crypto)
+                        pkgconfig_export(REQUIRES_PRIVATE libcrypto)
+                else()
+                        message(WARNING "Could not find OpenSSL::Crypto")
+                endif()
+        endif()
+endif()
+
+if (NOT OPENSSL_CRYPTO_LIBRARY)
+        set (libhashkit_sources ${libhashkit_sources} rijndael.cc)
+endif()
+
+# let libmemcached depend on libhashkitstatic to ensure that they do not
+# compete for the same generated dependencies
+add_dependencies(libhashkit libhashkitstatic)
+
+target_sources(libhashkitstatic PRIVATE
+        ${libhashkit_sources}
+        ${libhashkit_includes})
